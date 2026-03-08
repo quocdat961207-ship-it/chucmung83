@@ -33,30 +33,20 @@ var IS_MOBILE = IS_TOUCH && window.screen.width <= 900;
 /* ═══════════════════════════════════════════
    CONFIG
 ═══════════════════════════════════════════ */
-// Dùng ảnh online từ Picsum Photos — không cần upload file
-var PICSUM_IDS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
-
 var CFG = {
-  totalImages : PICSUM_IDS.length,
-  imgDir      : '',   // không dùng nữa
-  imgExt      : '',   // không dùng nữa
+  totalImages : 9,
+  imgDir      : './img/',
+  imgExt      : '.png',
+  imgList     : ['img1','img2','img3','img4','img5','img6','img8','img9','img10'],
   minDist     : IS_MOBILE ? 55  : 90,
   poolSize    : IS_MOBILE ? 6   : 10,
   imgW        : IS_MOBILE ? 110 : 210,
   imgH        : IS_MOBILE ? 83  : 158,
   totalFrames : IS_MOBILE ? 36  : 65,
   fpsCap      : IS_MOBILE ? 30  : 60,
-  prewarmN    : PICSUM_IDS.length,
+  prewarmN    : 9,
   lookAheadN  : 5
 };
-
-// Hàm trả về URL ảnh Picsum theo index
-function getPicsumUrl(idx) {
-  var id  = PICSUM_IDS[idx % PICSUM_IDS.length];
-  var w   = IS_MOBILE ? 220 : 420;
-  var h   = IS_MOBILE ? 166 : 316;
-  return 'https://picsum.photos/id/' + id + '/' + w + '/' + h;
-}
 
 /* ═══════════════════════════════════════════
    IMAGE CACHE — lazy + sequential
@@ -69,14 +59,13 @@ var _cache = [];
 (function(){ for(var i=0;i<CFG.totalImages;i++) _cache[i]=null; })();
 
 function loadImg(idx) {
-  if (_cache[idx] !== null) return;
+  if (_cache[idx] !== null) return; // đã load hoặc đang load
   _cache[idx] = 'loading';
   (function(i){
     var im = new Image();
-    im.crossOrigin = 'anonymous';
     im.onload  = function () { _cache[i] = im; };
     im.onerror = function () { _cache[i] = 'error'; };
-    im.src = getPicsumUrl(i);
+    im.src = CFG.imgDir + CFG.imgList[i] + CFG.imgExt;
   })(idx);
 }
 
@@ -94,7 +83,7 @@ function prewarm(onAllLoaded) {
     hintEl.innerHTML =
       '<div class="bee-track">' +
         '<div class="bee-fill" id="bee-fill"></div>' +
-        '<span class="bee-icon" id="bee-icon">🐝</span>' +
+        '<img class="bee-icon" id="bee-icon" src="./bee.png" alt="">' +
       '</div>' +
       '<span class="bee-label" id="bee-label">Đang tải... 0 / ' + total + '</span>';
   }
@@ -116,7 +105,6 @@ function prewarm(onAllLoaded) {
     _cache[i] = 'loading';
     (function(idx) {
       var im = new Image();
-      im.crossOrigin = 'anonymous';
       im.onload = function () {
         _cache[idx] = im;
         done++; updateBar();
@@ -127,7 +115,7 @@ function prewarm(onAllLoaded) {
         done++; updateBar();
         if (done >= total && onAllLoaded) onAllLoaded();
       };
-      im.src = getPicsumUrl(idx);
+      im.src = CFG.imgDir + CFG.imgList[idx] + CFG.imgExt;
     })(i);
   }
 }
@@ -229,30 +217,20 @@ CanvasTrail.prototype._dist = function (a, b) {
 };
 
 CanvasTrail.prototype._spawn = function (x, y) {
-  // Tìm ảnh tiếp theo đã load — tối đa thử 20 slot liên tiếp
-  var img = null, idx, tries = 0;
-  while (tries < 20) {
-    idx = this.nextImg % CFG.totalImages;
-    this.nextImg++;
-    tries++;
-    loadImg(idx);
-    lookAhead(idx);
-    if (isReady(idx)) { img = _cache[idx]; break; }
-  }
-  if (!img) return;
+  var idx = this.nextImg % CFG.totalImages;
+  this.nextImg++;
+  loadImg(idx);
+  lookAhead(idx);
 
-  // Giữ đúng tỉ lệ ảnh thật, giới hạn cạnh dài nhất
+  var img = isReady(idx) ? _cache[idx] : null;
   var maxLong = IS_MOBILE ? 130 : 240;
-  var nw = img.naturalWidth  || CFG.imgW;
-  var nh = img.naturalHeight || CFG.imgH;
-  var ratio = nw / nh;
-  var imgW, imgH;
-  if (nw >= nh) {
-    imgW = maxLong;
-    imgH = Math.round(maxLong / ratio);
-  } else {
-    imgH = maxLong;
-    imgW = Math.round(maxLong * ratio);
+  var imgW = maxLong, imgH = maxLong;
+  if (img) {
+    var nw = img.naturalWidth  || CFG.imgW;
+    var nh = img.naturalHeight || CFG.imgH;
+    var ratio = nw / nh;
+    if (nw >= nh) { imgW = maxLong; imgH = Math.round(maxLong / ratio); }
+    else          { imgH = maxLong; imgW = Math.round(maxLong * ratio); }
   }
 
   var rot = (Math.random() - 0.5) * 24 * Math.PI / 180;
@@ -295,22 +273,25 @@ CanvasTrail.prototype._tick = function () {
     if (!p.img) continue; // vẫn chưa load → skip render nhưng giữ slot
 
     var alpha;
-    if      (t < 0.30) { alpha = t / 0.30; }
-    else if (t < 0.60) { alpha = 1.0; }
-    else               { alpha = 1.0 - (t - 0.60) / 0.40; }
+    if      (t < 0.20) { alpha = t / 0.20; }
+    else if (t < 0.55) { alpha = 1.0; }
+    else               { alpha = 1.0 - (t - 0.55) / 0.45; }
     alpha *= 0.92;
 
     var sc;
-    if      (t < 0.30) { sc = 0.6 + (t / 0.30) * 0.4; }
-    else if (t < 0.60) { sc = 1.0; }
-    else               { sc = 1.0 - (t - 0.60) / 0.40 * 0.15; }
+    if      (t < 0.20) { sc = 0.5 + (t / 0.20) * 0.5; }
+    else if (t < 0.55) { sc = 1.0; }
+    else               { sc = 1.0 - (t - 0.55) / 0.45 * 0.2; }
+
+    // Float up: ảnh nổi lên theo thời gian
+    var floatY = t * (IS_MOBILE ? 60 : 100);
 
     var w = p.imgW * sc;
     var h = p.imgH * sc;
 
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.translate(p.x, p.y);
+    ctx.translate(p.x, p.y - floatY);
     ctx.rotate(p.rot);
 
     // Bo góc tự nhiên — radius ~12% cạnh ngắn
@@ -432,6 +413,9 @@ function initTrail() {
     }
     // Hiện chữ KNKT + dòng sub
     page2.classList.add('revealed');
+    // Hiện nút xem lời chúc
+    var btnWishEl = document.getElementById('btn-wish');
+    if (btnWishEl) setTimeout(function(){ btnWishEl.classList.add('visible'); }, 800);
     enableEvents();
     if (trail) trail.wakeUp();
   }
@@ -443,7 +427,7 @@ function initTrail() {
     enableEvents(); // fallback nếu không có nút
   }
 
-  // Load 150 ảnh — CHỈ hiện nút khi load xong hoàn toàn
+  // Load 10 ảnh — CHỈ hiện nút khi load xong hoàn toàn
   prewarm(function onAllLoaded() {
     var fillEl  = document.getElementById('bee-fill');
     var iconEl  = document.getElementById('bee-icon');
@@ -457,5 +441,64 @@ function initTrail() {
     if (btnSurprise) {
       setTimeout(function () { btnSurprise.classList.add('visible'); }, 700);
     }
+  });
+
+  // ── Nút chuyển sang trang 3 ──
+  var btnWish = document.getElementById('btn-wish');
+  if (btnWish) {
+    btnWish.addEventListener('click', goPage3);
+    btnWish.addEventListener('touchend', function(e){ e.preventDefault(); goPage3(); });
+  }
+}
+
+/* ═══════════════════════════════════════════
+   TRANG 3 — LỜI CHÚC
+═══════════════════════════════════════════ */
+function goPage3() {
+  document.body.classList.add('go-page3');
+  initPetals();
+}
+
+function initPetals() {
+  var container = document.getElementById('petalShower');
+  if (!container || container._inited) return;
+  container._inited = true;
+
+  var colors = [
+    'rgba(255,105,135,0.75)',
+    'rgba(255,150,170,0.65)',
+    'rgba(255,80,110,0.7)',
+    'rgba(220,60,90,0.6)',
+    'rgba(255,180,190,0.55)',
+    'rgba(255,200,210,0.5)'
+  ];
+
+  for (var i = 0; i < 35; i++) {
+    (function(idx) {
+      var el = document.createElement('div');
+      el.className = 'petal';
+      var size = 10 + Math.random() * 14;
+      el.style.cssText = [
+        'left:'            + (Math.random() * 100) + 'vw',
+        'width:'           + size + 'px',
+        'height:'          + (size * 1.5) + 'px',
+        'background:'      + colors[idx % colors.length],
+        'animation-duration:' + (4 + Math.random() * 6) + 's',
+        'animation-delay:' + (Math.random() * 8) + 's',
+        'border-radius:'   + (Math.random() > 0.5 ? '50% 0 50% 0' : '0 50% 0 50%')
+      ].join(';');
+      container.appendChild(el);
+    })(i);
+  }
+}
+
+var btnBack = document.getElementById('btn-back');
+if (btnBack) {
+  btnBack.addEventListener('click', function() {
+    document.body.classList.remove('go-page3');
+  });
+  btnBack.addEventListener('touchend', function(e) {
+    e.preventDefault();
+    document.body.classList.remove('go-page3');
   });
 }
