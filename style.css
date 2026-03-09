@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Pacifico&display=swap');
+
 /* ═══════════════════════════════════════════════════════
    style.css — Intro Hoa + Canvas Trail
    Đã xoá: .trail__item, .trail__img (không dùng nữa)
@@ -13,7 +15,7 @@
 
 @font-face {
   font-family: 'myFont';
-  src: url('./Pacifico-Regular.ttf') format('truetype');
+  src: local('Pacifico'), url('./Pacifico-Regular.ttf') format('truetype');
   font-display: swap;
 }
 
@@ -22,13 +24,14 @@ html, body { width: 100%; height: 100%; overflow: hidden; }
 /* ═══════════════════════════════════════════
    CHUYỂN CẢNH — slide ngang
 ═══════════════════════════════════════════ */
-#page1, #page2, #page3 {
+#page1, #page2 {
   position: fixed;
   inset: 0;
   width: 100%;
   height: 100%;
   transition: transform 0.9s cubic-bezier(0.77, 0, 0.18, 1),
               opacity   0.9s ease;
+  /* GPU layer cho transition */
   will-change: transform, opacity;
   transform: translateZ(0);
   backface-visibility: hidden;
@@ -37,14 +40,9 @@ html, body { width: 100%; height: 100%; overflow: hidden; }
 
 #page1 { transform: translateX(0);    opacity: 1; z-index: 10; }
 #page2 { transform: translateX(100%); opacity: 0; z-index: 5;  }
-#page3 { transform: translateX(100%); opacity: 0; z-index: 5;  }
 
 body.go-page2 #page1 { transform: translateX(-100%); opacity: 0; }
 body.go-page2 #page2 { transform: translateX(0);     opacity: 1; z-index: 10; }
-body.go-page2 #page3 { transform: translateX(100%);  opacity: 0; z-index: 5;  }
-
-body.go-page3 #page2 { transform: translateX(-100%); opacity: 0; }
-body.go-page3 #page3 { transform: translateX(0);     opacity: 1; z-index: 10; }
 
 /* ═══════════════════════════════════════════
    TRANG 1 — HOA CSS
@@ -531,8 +529,126 @@ body.go-page2 #page2 { touch-action: none; overflow: hidden; }
 }
 
 /* ═══════════════════════════════════════════
-   NÚT XEM LỜI CHÚC — trang 2
+   TRANG 3 — CHUYỂN CẢNH
 ═══════════════════════════════════════════ */
+#page3 {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.9s cubic-bezier(0.77, 0, 0.18, 1),
+              opacity   0.9s ease;
+  will-change: transform, opacity;
+  transform: translateX(100%);
+  opacity: 0;
+  z-index: 5;
+  background: radial-gradient(ellipse at 50% 30%, #1a0010 0%, #0a0005 70%, #000 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+body.go-page2 #page3 { transform: translateX(100%); opacity: 0; z-index: 5; }
+body.go-page3 #page2 { transform: translateX(-100%); opacity: 0; }
+body.go-page3 #page3 { transform: translateX(0);     opacity: 1; z-index: 10; }
+
+/* Cánh hoa rơi */
+.page3-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.petal {
+  position: absolute;
+  top: -60px;
+  opacity: 0;
+  animation: petal-fall linear infinite;
+}
+@keyframes petal-fall {
+  0%   { transform: translateY(0) rotate(0deg) scale(1); opacity: 0; }
+  10%  { opacity: 0.8; }
+  85%  { opacity: 0.6; }
+  100% { transform: translateY(110vh) rotate(720deg) scale(0.6); opacity: 0; }
+}
+
+/* Card lời chúc */
+.page3-content {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 20px;
+}
+.page3-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,100,100,0.2);
+  border-radius: 24px;
+  padding: clamp(32px, 6vw, 64px) clamp(28px, 7vw, 72px);
+  max-width: min(600px, 90vw);
+  width: 100%;
+  text-align: center;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 0 60px rgba(192,57,43,0.15),
+              0 0 120px rgba(139,0,0,0.08),
+              inset 0 1px 0 rgba(255,255,255,0.07);
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.8s ease 0.2s, transform 0.8s ease 0.2s;
+}
+body.go-page3 .page3-card {
+  opacity: 1;
+  transform: translateY(0);
+}
+.page3-icon {
+  font-size: clamp(36px, 8vw, 64px);
+  margin-bottom: 12px;
+  animation: icon-float 3s ease-in-out infinite;
+}
+@keyframes icon-float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
+}
+.page3-title {
+  font-family: myFont, serif;
+  font-size: clamp(22px, 5vw, 40px);
+  color: #ff8a80;
+  margin-bottom: 16px;
+  letter-spacing: 2px;
+  text-shadow: 0 0 20px rgba(255,100,100,0.4);
+}
+.page3-divider {
+  width: 60px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #c0392b, transparent);
+  margin: 0 auto 24px;
+  border-radius: 2px;
+}
+.page3-message {
+  font-family: myFont, serif;
+  font-size: clamp(14px, 2.5vw, 20px);
+  color: rgba(255,220,200,0.9);
+  line-height: 2;
+  margin-bottom: 28px;
+  letter-spacing: 0.5px;
+}
+.page3-message strong {
+  color: #ff8a80;
+  text-shadow: 0 0 12px rgba(255,100,100,0.5);
+}
+.page3-signature {
+  font-family: myFont, serif;
+  font-size: clamp(13px, 2vw, 17px);
+  color: rgba(255,150,150,0.6);
+  font-style: italic;
+  letter-spacing: 1px;
+}
+
+/* Nút xem lời chúc (trang 2) */
 #btn-wish {
   position: fixed;
   bottom: 36px;
@@ -564,127 +680,7 @@ body.go-page2 #page2 { touch-action: none; overflow: hidden; }
   transform: translateY(-2px);
 }
 
-/* ═══════════════════════════════════════════
-   TRANG 3 — LỜI CHÚC
-═══════════════════════════════════════════ */
-#page3 {
-  background: radial-gradient(ellipse at 50% 30%, #1a0010 0%, #0a0005 70%, #000 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.page3-bg {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  overflow: hidden;
-}
-
-/* Cánh hoa rơi */
-.petal {
-  position: absolute;
-  top: -60px;
-  width: clamp(10px, 2vw, 18px);
-  height: clamp(16px, 3vw, 28px);
-  border-radius: 50% 0 50% 0;
-  opacity: 0;
-  animation: petal-fall linear infinite;
-}
-
-@keyframes petal-fall {
-  0%   { transform: translateY(0) rotate(0deg) scale(1); opacity: 0; }
-  10%  { opacity: 0.8; }
-  85%  { opacity: 0.6; }
-  100% { transform: translateY(110vh) rotate(720deg) scale(0.6); opacity: 0; }
-}
-
-.page3-content {
-  position: relative;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  padding: 20px;
-}
-
-.page3-card {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,100,100,0.2);
-  border-radius: 24px;
-  padding: clamp(32px, 6vw, 64px) clamp(28px, 7vw, 72px);
-  max-width: min(600px, 90vw);
-  width: 100%;
-  text-align: center;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 0 60px rgba(192,57,43,0.15),
-              0 0 120px rgba(139,0,0,0.08),
-              inset 0 1px 0 rgba(255,255,255,0.07);
-
-  opacity: 0;
-  transform: translateY(30px);
-  transition: opacity 0.8s ease 0.2s, transform 0.8s ease 0.2s;
-}
-
-body.go-page3 .page3-card {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.page3-icon {
-  font-size: clamp(36px, 8vw, 64px);
-  margin-bottom: 12px;
-  animation: icon-float 3s ease-in-out infinite;
-}
-
-@keyframes icon-float {
-  0%, 100% { transform: translateY(0); }
-  50%       { transform: translateY(-8px); }
-}
-
-.page3-title {
-  font-family: myFont, serif;
-  font-size: clamp(22px, 5vw, 40px);
-  color: #ff8a80;
-  margin-bottom: 16px;
-  letter-spacing: 2px;
-  text-shadow: 0 0 20px rgba(255,100,100,0.4);
-}
-
-.page3-divider {
-  width: 60px;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, #c0392b, transparent);
-  margin: 0 auto 24px;
-  border-radius: 2px;
-}
-
-.page3-message {
-  font-family: myFont, serif;
-  font-size: clamp(14px, 2.5vw, 20px);
-  color: rgba(255, 220, 200, 0.9);
-  line-height: 2;
-  margin-bottom: 28px;
-  letter-spacing: 0.5px;
-}
-
-.page3-message strong {
-  color: #ff8a80;
-  text-shadow: 0 0 12px rgba(255,100,100,0.5);
-}
-
-.page3-signature {
-  font-family: myFont, serif;
-  font-size: clamp(13px, 2vw, 17px);
-  color: rgba(255,150,150,0.6);
-  font-style: italic;
-  letter-spacing: 1px;
-}
-
-/* Nút quay lại */
+/* Nút quay lại (trang 3) */
 #btn-back {
   position: fixed;
   bottom: 36px;

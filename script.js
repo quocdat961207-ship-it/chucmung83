@@ -31,20 +31,31 @@ var IS_TOUCH  = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 var IS_MOBILE = IS_TOUCH && window.screen.width <= 900;
 
 /* ═══════════════════════════════════════════
+   BASE URL — tự động detect cho GitHub Pages
+═══════════════════════════════════════════ */
+var BASE_URL = (function () {
+  var loc = window.location.href.split('?')[0].split('#')[0];
+  if (loc.charAt(loc.length - 1) !== '/') {
+    loc = loc.substring(0, loc.lastIndexOf('/') + 1);
+  }
+  return loc;
+})();
+
+
+/* ═══════════════════════════════════════════
    CONFIG
 ═══════════════════════════════════════════ */
 var CFG = {
-  totalImages : 9,
-  imgDir      : './img/',
+  totalImages : 10,
+  imgDir      : BASE_URL + 'img/',
   imgExt      : '.png',
-  imgList     : ['img1','img2','img3','img4','img5','img6','img8','img9','img10'],
   minDist     : IS_MOBILE ? 55  : 90,
   poolSize    : IS_MOBILE ? 6   : 10,
   imgW        : IS_MOBILE ? 110 : 210,
   imgH        : IS_MOBILE ? 83  : 158,
   totalFrames : IS_MOBILE ? 36  : 65,
   fpsCap      : IS_MOBILE ? 30  : 60,
-  prewarmN    : 9,
+  prewarmN    : 10,  // load hết toàn bộ ngay từ đầu
   lookAheadN  : 5
 };
 
@@ -65,7 +76,7 @@ function loadImg(idx) {
     var im = new Image();
     im.onload  = function () { _cache[i] = im; };
     im.onerror = function () { _cache[i] = 'error'; };
-    im.src = CFG.imgDir + CFG.imgList[i] + CFG.imgExt;
+    im.src = CFG.imgDir + 'img' + (i + 1) + CFG.imgExt;
   })(idx);
 }
 
@@ -83,7 +94,7 @@ function prewarm(onAllLoaded) {
     hintEl.innerHTML =
       '<div class="bee-track">' +
         '<div class="bee-fill" id="bee-fill"></div>' +
-        '<img class="bee-icon" id="bee-icon" src="./bee.png" alt="">' +
+        '<img class="bee-icon" id="bee-icon" src="' + BASE_URL + 'bee.png" alt="">' +
       '</div>' +
       '<span class="bee-label" id="bee-label">Đang tải... 0 / ' + total + '</span>';
   }
@@ -115,7 +126,7 @@ function prewarm(onAllLoaded) {
         done++; updateBar();
         if (done >= total && onAllLoaded) onAllLoaded();
       };
-      im.src = CFG.imgDir + CFG.imgList[idx] + CFG.imgExt;
+      im.src = CFG.imgDir + 'img' + (idx + 1) + CFG.imgExt;
     })(i);
   }
 }
@@ -217,20 +228,30 @@ CanvasTrail.prototype._dist = function (a, b) {
 };
 
 CanvasTrail.prototype._spawn = function (x, y) {
-  var idx = this.nextImg % CFG.totalImages;
-  this.nextImg++;
-  loadImg(idx);
-  lookAhead(idx);
+  // Tìm ảnh tiếp theo đã load — tối đa thử 20 slot liên tiếp
+  var img = null, idx, tries = 0;
+  while (tries < 20) {
+    idx = this.nextImg % CFG.totalImages;
+    this.nextImg++;
+    tries++;
+    loadImg(idx);
+    lookAhead(idx);
+    if (isReady(idx)) { img = _cache[idx]; break; }
+  }
+  if (!img) return;
 
-  var img = isReady(idx) ? _cache[idx] : null;
+  // Giữ đúng tỉ lệ ảnh thật, giới hạn cạnh dài nhất
   var maxLong = IS_MOBILE ? 130 : 240;
-  var imgW = maxLong, imgH = maxLong;
-  if (img) {
-    var nw = img.naturalWidth  || CFG.imgW;
-    var nh = img.naturalHeight || CFG.imgH;
-    var ratio = nw / nh;
-    if (nw >= nh) { imgW = maxLong; imgH = Math.round(maxLong / ratio); }
-    else          { imgH = maxLong; imgW = Math.round(maxLong * ratio); }
+  var nw = img.naturalWidth  || CFG.imgW;
+  var nh = img.naturalHeight || CFG.imgH;
+  var ratio = nw / nh;
+  var imgW, imgH;
+  if (nw >= nh) {
+    imgW = maxLong;
+    imgH = Math.round(maxLong / ratio);
+  } else {
+    imgH = maxLong;
+    imgW = Math.round(maxLong * ratio);
   }
 
   var rot = (Math.random() - 0.5) * 24 * Math.PI / 180;
@@ -273,25 +294,22 @@ CanvasTrail.prototype._tick = function () {
     if (!p.img) continue; // vẫn chưa load → skip render nhưng giữ slot
 
     var alpha;
-    if      (t < 0.20) { alpha = t / 0.20; }
-    else if (t < 0.55) { alpha = 1.0; }
-    else               { alpha = 1.0 - (t - 0.55) / 0.45; }
+    if      (t < 0.30) { alpha = t / 0.30; }
+    else if (t < 0.60) { alpha = 1.0; }
+    else               { alpha = 1.0 - (t - 0.60) / 0.40; }
     alpha *= 0.92;
 
     var sc;
-    if      (t < 0.20) { sc = 0.5 + (t / 0.20) * 0.5; }
-    else if (t < 0.55) { sc = 1.0; }
-    else               { sc = 1.0 - (t - 0.55) / 0.45 * 0.2; }
-
-    // Float up: ảnh nổi lên theo thời gian
-    var floatY = t * (IS_MOBILE ? 60 : 100);
+    if      (t < 0.30) { sc = 0.6 + (t / 0.30) * 0.4; }
+    else if (t < 0.60) { sc = 1.0; }
+    else               { sc = 1.0 - (t - 0.60) / 0.40 * 0.15; }
 
     var w = p.imgW * sc;
     var h = p.imgH * sc;
 
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.translate(p.x, p.y - floatY);
+    ctx.translate(p.x, p.y);
     ctx.rotate(p.rot);
 
     // Bo góc tự nhiên — radius ~12% cạnh ngắn
@@ -413,9 +431,9 @@ function initTrail() {
     }
     // Hiện chữ KNKT + dòng sub
     page2.classList.add('revealed');
-    // Hiện nút xem lời chúc
+    // Hiện nút xem lời chúc sau 1s
     var btnWishEl = document.getElementById('btn-wish');
-    if (btnWishEl) setTimeout(function(){ btnWishEl.classList.add('visible'); }, 800);
+    if (btnWishEl) setTimeout(function(){ btnWishEl.classList.add('visible'); }, 1000);
     enableEvents();
     if (trail) trail.wakeUp();
   }
@@ -442,14 +460,8 @@ function initTrail() {
       setTimeout(function () { btnSurprise.classList.add('visible'); }, 700);
     }
   });
-
-  // ── Nút chuyển sang trang 3 ──
-  var btnWish = document.getElementById('btn-wish');
-  if (btnWish) {
-    btnWish.addEventListener('click', goPage3);
-    btnWish.addEventListener('touchend', function(e){ e.preventDefault(); goPage3(); });
-  }
 }
+
 
 /* ═══════════════════════════════════════════
    TRANG 3 — LỜI CHÚC
@@ -463,7 +475,6 @@ function initPetals() {
   var container = document.getElementById('petalShower');
   if (!container || container._inited) return;
   container._inited = true;
-
   var colors = [
     'rgba(255,105,135,0.75)',
     'rgba(255,150,170,0.65)',
@@ -472,7 +483,6 @@ function initPetals() {
     'rgba(255,180,190,0.55)',
     'rgba(255,200,210,0.5)'
   ];
-
   for (var i = 0; i < 35; i++) {
     (function(idx) {
       var el = document.createElement('div');
@@ -492,6 +502,14 @@ function initPetals() {
   }
 }
 
+// Nút chuyển sang trang 3
+var btnWish = document.getElementById('btn-wish');
+if (btnWish) {
+  btnWish.addEventListener('click', goPage3);
+  btnWish.addEventListener('touchend', function(e){ e.preventDefault(); goPage3(); });
+}
+
+// Nút quay lại trang 2
 var btnBack = document.getElementById('btn-back');
 if (btnBack) {
   btnBack.addEventListener('click', function() {
